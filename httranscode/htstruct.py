@@ -1,9 +1,8 @@
 # -*- coding: UTF-8 -*-
+#海通转码数据接口
+
 import struct
 # import array
-import random
-from buffereader import buffereader
-from until import uchar_checksum
 from ctypes import *
 
 CAM_MSG_BOOT_CODE = 0x7f7f
@@ -45,6 +44,7 @@ CAM_HQKZ_SSHQ_SG =12
 CAM_HQKZ_SSQDHQ	=13 #千档行情
 CAM_HQKZ_SSHQEXT =	14 #拓展动态行情
 CAM_HQKZ_XGSG =	15	#申购信息
+CAM_HQKZ_BLOCKHQ = 16	#板块行情
 
 print "CaMsgHeader(boot_code,checksum,length,cmd,seq_id,compress)"
 
@@ -244,6 +244,11 @@ class SSHQ:
                 , self.total_volume, self.total_amount, self.total_trade_count, self.position,
                 self.date,self.time)
 
+class struct_SSHQ(Structure):
+    _pack_ =1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+    ]
 
 class ZQDMInfo:
     fmt = '<22s60s16sBH4iBiB2iB'
@@ -291,6 +296,7 @@ class ZQDMInfo:
         return header
 
     def getstr(self):
+        # print str(self.code).strip('\x00'), str(self.name).strip('\x00')
         return (ZQDMInfo.fmt, str(self.code).strip('\x00'), str(self.name).strip('\x00'), str(self.pinyin_name).strip('\x00'), self.type, self.volume_unit
                 , self.pre_close, self.high_limit, self.low_limit, self.price_digit,
                 self.price_divide,self.intrest,self.crd_flag,self.pre_position,self.pre_settle_price,self.ext_type)
@@ -322,15 +328,26 @@ class MBInfo:
         header.init(unpacked)
         return header
 
+    # .decode('UTF-8').encode('UTF-8'),
     def getstr(self):
-        return (MBInfo.fmt, str(self.code).strip('\x00'), str(self.name_now).strip('\x00'), str(self.pinyin_name_now).strip('\x00'),
-                str(self.name_old).strip('\x00'), str(self.pinyin_name_old).strip('\x00'),self.type )
+        # import array
+        arr = self.name_now.strip('\x00')
+        print arr
+        return [MBInfo.fmt, str(self.code).strip('\x00'), arr,
+                str(self.pinyin_name_now).strip('\x00'),
+                str(self.name_old).strip('\x00'), str(self.pinyin_name_old).strip('\x00'),str(self.type)]
 
-def PrintQt(qt):
-    tmpstr = ''
+def prn_obj(obj):
+    return ','.join(['%s:%s' % item for item in obj.__dict__.items()])
+
+def PrintStuct(qt):
+
+    tmpstr = str(qt.__class__)
     for (name,type) in qt._fields_:
         tmpstr = tmpstr+name+':'+ str(qt.__getattribute__(name))+','
-    print tmpstr
+
+    # print tmpstr
+    return tmpstr
 
 class myMbInfo(Structure):
     _pack_ =1
@@ -342,3 +359,67 @@ class myMbInfo(Structure):
         ('pinyin_name_old', c_char * 24),  # old pin yin
         ('type', c_ubyte),  # type
     ]
+
+class BLOCKHQ(Structure):
+    _pack_ =1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+        ('last', c_int),  #
+        ('open', c_int),  #
+        ('high', c_int),  #
+        ('low', c_int),  #
+        ('total_volume', c_longlong),  # type
+
+        ('total_amount', c_longlong),  #
+        ('pchTopStockCode', c_char * 22),  #
+        ('StockNum', c_ushort),  #
+        ('UpNum', c_ushort),  #
+        ('DownNum', c_ushort),  #
+        ('StrongNum', c_ushort),  #
+        ('WeakNum', c_ushort),  #
+        ('ZGB', c_longlong),  #
+        ('LTG', c_longlong),  #
+        ('LTSZ', c_longlong),  #
+        ('ZSZ', c_longlong),  #
+        ('date', c_int),  #
+        ('time', c_int),  #
+    ]
+
+class struct_xgsg(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+        ('name', c_char * 60),  # 股票代码
+        ('market_type', c_int8),  #
+        ('issue_price', c_int),  #
+        ('apply_share', c_int),  #
+        ('price_digit', c_int8),  #
+        ('price_divide', c_int8),  # type
+
+        ('date', c_int),  #
+        ('id', c_char * 15),  #
+        ('issue_type', c_int8),  #
+    ]
+
+class Struct_ZQDMInfo(Structure):
+    fmt = '<22s60s16sBH4iBiB2iB'
+    size = struct.calcsize(fmt)
+    _pack_ = 1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+        ('name', c_char * 60),  #
+        ('pinyin_name', c_char * 16),  #
+        ('type', c_byte),  #
+        ('volume_unit', c_short),  #
+        ('pre_close', c_int),  # type
+        ('high_limit', c_int),  #
+        ('low_limit', c_int),  #
+        ('price_digit', c_int),  #
+        ('price_divide', c_byte),  #
+        ('intrest', c_int),  #
+        ('crd_flag', c_byte),  #
+        ('pre_position', c_int),  #
+        ('pre_settle_price', c_int),  #
+        ('ext_type', c_byte),  #
+    ]
+

@@ -13,6 +13,7 @@ class quotelistitem:
         self.name_ = name
 
     def settuple(self,tuple):
+        print tuple
         self.decimal_ = tuple[0]
         self.type_ = tuple[1]
         self.preclose_ = tuple[2]
@@ -21,6 +22,8 @@ class quotelistitem:
         self.high_ = tuple[5]
         self.low_ = tuple[6]
         self.amount_ = tuple[7]
+        self.volumn_ = tuple[10]
+
 
     def printcodes(self):
         print str(self.code_)+","+str(self.name_)
@@ -34,7 +37,7 @@ class htclient:
     def connect(self,ip,port):
         return self.sock_.connect( (ip,port) )
 
-    def reqest2984(self,rankingfield = 1,rankingway = 0,reqbegin =0,reqnum = 50):
+    def reqest2984(self,rankingfield = 0,rankingway = 0,reqbegin =0,reqnum = 50):
         print "reqest2984:",(rankingfield, rankingway,rankingway, reqbegin,reqnum)
         body = struct.pack('<3B2h',  rankingfield, rankingway,rankingway, reqbegin,reqnum)
         tail = '}'
@@ -42,7 +45,7 @@ class htclient:
         data = head +body +tail
         self.sock_.send(data)
 
-    def reqest2955(self,market = 102, filedattri = 0,rankingfield = 9,rankingway = 0,reqbegin =0,reqnum = 50):
+    def reqest2955(self,market = 102, filedattri = 1,rankingfield = 9,rankingway = 0,reqbegin =0,reqnum = 50):
         body = struct.pack('<2h2B3h',market, filedattri, rankingfield, rankingway, reqbegin,reqnum,0)
         tail = '}'
         head = struct.pack('<c3h','{',2955,0,struct.calcsize('<2h2B3h') )
@@ -53,6 +56,13 @@ class htclient:
         body = struct.pack('<H2B2hB',market,  rankingway,rankingfield, reqbegin,reqnum,1)
         tail = '}'
         head = struct.pack('<c3h','{',2938,0,struct.calcsize('<h2B2hB') )
+        data = head +body +tail
+        self.sock_.send(data)
+
+    def reqest2331(self,id = 0, rankingfield = 1,rankingway = 0,reqbegin =0,reqnum = 50):
+        body = struct.pack('<3H3B',0, reqbegin,reqnum,rankingfield, rankingway,id )
+        tail = '}'
+        head = struct.pack('<c3h','{',2331,0,struct.calcsize('<3H3B') )
         data = head +body +tail
         self.sock_.send(data)
 
@@ -88,12 +98,16 @@ class htclient:
                 name = reader.readstring()
                 quoteitem.setcodename(code,name)
 
-                tuples = reader.readtuple('<2b6i')
-                quoteitem.settuple(tuples)
-                quoteitem.printcodes()
                 # quoteitem.printself()
                 if bodyhead[0] ==105:
-                    reader.readshort()
+                    tuples = reader.readtuple('<2b6i2hi')
+                    quoteitem.settuple(tuples)
+                    quoteitem.printcodes()
+                else:
+                    tuples = reader.readtuple('<2b6i')
+                    quoteitem.settuple(tuples)
+                    quoteitem.printcodes()
+                    # reader.readshort()
                 itemlist.append(quoteitem)
 
             return itemlist, bodyhead[2]
@@ -126,93 +140,27 @@ class htclient:
                 #     reader.readshort()
                 itemlist.append(quoteitem)
 
-            return itemlist,bodyhead[0]
+        elif type == 2331:
+            reader = buffereader(data)
+            bodyhead = reader.readtuple('<B2h')
+            # struct.unpack('<hhhh',data[:8])
+            print 'bodyhead', bodyhead
+
+            for i in range(0, bodyhead[2]):
+                quoteitem = quotelistitem()
+                code = reader.readstring()
+                # print "code=",code,",test"
+                name = reader.readstring()
+                quoteitem.setcodename(code, name)
+                if bodyhead[0] == 5:
+                    reader.readtuple('<6i')
+                else:
+                    reader.readtuple('<10i')
+                quoteitem.printcodes()
+                itemlist.append(quoteitem)
+            return itemlist, bodyhead[1]
+
+        return itemlist,bodyhead[0]
 
 
-def Getlist( market,rankingway = 0):
-    port = 13000
-    ip = '121.43.72.79'
 
-    client = htclient()
-    client.connect(ip, port)
-    client.reqest2955(market = market,rankingway = rankingway)
-    index = 0
-
-    datarecv,datalen = client.recvhead()
-    totallist = []
-    if datalen:
-        bodyrecv = client.recvbody(datalen)
-
-        # wholedata = datarecv + bodyrecv
-        # print len(wholedata)
-
-        itemlist,totalsize = client.parsebody( 2955,bodyrecv )
-        # print 'totallist:', len(totallist), ',totalsize:', totalsize
-        index += len(itemlist)
-        totallist = totallist + itemlist
-        while index <totalsize:
-            client.reqest2955(reqbegin = index,market =market,rankingway = rankingway)
-            datarecv, datalen = client.recvhead()
-            if not datalen:
-                print "recv head error"
-                break
-            bodyrecv = client.recvbody(datalen)
-            itemlist, totalsize = client.parsebody(2955, bodyrecv)
-            index += len(itemlist)
-            totallist = totallist + itemlist
-        print 'totallist:',len(totallist),',totalsize:',totalsize
-
-def Getlist2984( rankingway = 0):
-    port = 13000
-    ip = '121.43.72.79'
-
-    client = htclient()
-    client.connect(ip, port)
-    client.reqest2984(rankingway = rankingway,reqnum= 50)
-    index = 0
-
-    datarecv,datalen = client.recvhead()
-    totallist = []
-    if datalen:
-        bodyrecv = client.recvbody(datalen)
-    totallist = []
-    if datalen:
-
-        # wholedata = datarecv + bodyrecv
-        # print len(wholedata)
-
-        itemlist,totalsize = client.parsebody( 2984,bodyrecv )
-        # print 'totallist:', len(totallist), ',totalsize:', totalsize
-        index += len(itemlist)
-        totallist = totallist + itemlist
-        while index <totalsize:
-            client.reqest2984(reqbegin = index,rankingway = rankingway,reqnum= 50)
-            datarecv, datalen = client.recvhead()
-            if not datalen:
-                print "recv head error"
-                break
-            bodyrecv = client.recvbody(datalen)
-            itemlist, totalsize = client.parsebody(2984, bodyrecv)
-            index += len(itemlist)
-            totallist = totallist + itemlist
-        print 'totallist:',len(totallist),',totalsize:',totalsize
-
-
-def Getlist2938(market, rankingway=0):
-    port = 13000
-    ip = '121.43.72.79'
-
-    client = htclient()
-    client.connect(ip, port)
-    client.reqest2938(market=market, rankingway=rankingway)
-    index = 0
-
-    datarecv, datalen = client.recvhead()
-    totallist = []
-    if datalen:
-        bodyrecv = client.recvbody(datalen)
-
-        # wholedata = datarecv + bodyrecv
-        # print len(wholedata)
-
-        itemlist, totalsize = client.parsebody(2938, bodyrecv)

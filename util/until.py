@@ -1,4 +1,9 @@
 # -*- coding: UTF-8 -*-
+
+import logging
+import os
+
+
 from buffereader import buffereader
 
 def uchar_checksum(data, byteorder='little'):
@@ -32,3 +37,24 @@ def uchar_checksum(data, byteorder='little'):
     checksum &= 0xffff
     # print 'checksum',checksum
     return checksum
+
+def getCurrentFileName( ):
+    filename = os.path.basename(__file__)
+    return os.path.splitext(filename)[0]
+
+def InitLog(curpath,curfilename):
+    # curpath = os.path.dirname(__file__)
+    # curfilename = getCurrentFileName()
+    # print curpath, curfilename
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                        datefmt='%a, %d %b %Y %H:%M:%S',
+                        filename=curpath + '/../log/' + curfilename + '.txt',
+                        filemode='w')
+    # print curpath + '/../log/' + curfilename + '.txt'
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+

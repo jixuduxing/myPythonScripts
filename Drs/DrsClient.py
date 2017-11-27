@@ -125,7 +125,7 @@ class DrsClient:
                 # unpackeddata2 = struct.unpack_from('<II32s16s16s5dQdQ10d10QdQdQ3d',data,j)
 
                 qt = SStdQt()
-                memmove(addressof(qt),data[j:],sizeof(SStdQt))
+                memmove(addressof(qt),data[j:j+sizeof(SStdQt)],sizeof(SStdQt))
                 output(qt)
 
         elif unpackeddata[3] == 76:
