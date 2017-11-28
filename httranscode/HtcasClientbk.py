@@ -188,7 +188,8 @@ class htcasclient:
                 info = myMbInfo()
                 structbuff = buffer.readbytes(structsize)
                 memmove(addressof(info), structbuff, sizeof(myMbInfo))
-                # logging.debug(PrintStuct(info))
+                if  info.code[:2] =='BI':
+                    logging.debug(PrintStuct(info))
                 # mbinfo = MBInfo.frombuffer(structbuff)
                 # print mbinfo.getstr()
             else:
@@ -279,7 +280,7 @@ class htcasclient:
                 info = struct_xgsg()
                 structbuff = buffer.readbytes(structsize)
                 memmove(addressof(info), structbuff, sizeof(struct_xgsg))
-                logging.debug(PrintStuct(info))
+                # logging.debug(PrintStuct(info))
             else:
                 # print "kztype:",kztype
                 structbuff = buffer.readbytes(structsize)

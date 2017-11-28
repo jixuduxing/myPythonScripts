@@ -358,6 +358,7 @@ class myMbInfo(Structure):
         ('name_old', c_char * 60),  # 股票old名称
         ('pinyin_name_old', c_char * 24),  # old pin yin
         ('type', c_ubyte),  # type
+        ('blockid', c_int),  # type
     ]
 
 class BLOCKHQ(Structure):
