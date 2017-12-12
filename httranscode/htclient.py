@@ -1,6 +1,10 @@
+# -*- coding: UTF-8 -*-
+
 import socket
 import struct
 from buffereader import buffereader
+from ctypes import *
+import time
 
 class quotelistitem:
     def __init__(self):
@@ -30,12 +34,45 @@ class quotelistitem:
     def printself(self):
         print str(self.code_),str(self.name_), (self.decimal_, self.type_, self.preclose_, self.open_, self.new_, self.high_, self.low_, self.amount_)
 
+class pushhead(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ('errcode', c_int),  #
+        ('seq', c_int),  #
+        ('listrange', c_short),  #
+        ('listatt', c_short),  #
+        ('totalnum', c_short),  #
+        ('curnum', c_short),  #
+        ('zh1', c_int),  #
+        ('zh2', c_int),  #
+        ('zh3', c_int),  #
+    ]
+
+def Stuct2Str(qt):
+
+    tmpstr = str(qt.__class__)
+    for (name,type) in qt._fields_:
+        tmpstr = tmpstr+name+':'+ str(qt.__getattribute__(name))+','
+
+    # print tmpstr
+    return tmpstr
+
 class htclient:
     def __init__(self):
         self.sock_ = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        self.running = True
+        self.seq = 1
 
     def connect(self,ip,port):
         return self.sock_.connect( (ip,port) )
+
+    def heartbeat(self):
+        body = struct.pack('<I', self.seq)
+        seq = self.seq +1
+        tail = '}'
+        head = struct.pack('<c3h', '{', 10009, 0, struct.calcsize('<I'))
+        data = head + body + tail
+        self.sock_.send(data)
 
     def reqest2984(self,rankingfield = 0,rankingway = 0,reqbegin =0,reqnum = 50):
         print "reqest2984:",(rankingfield, rankingway,rankingway, reqbegin,reqnum)
@@ -66,15 +103,37 @@ class htclient:
         data = head +body +tail
         self.sock_.send(data)
 
+    # int    流水号    转发即可
+    # short    列表范围    其实就是自选股列表，可以是1个股票，可以多个
+    # short    操作类型    1    取消（即完全删除），2    删除（删除部分），3    增加（增加股票），4    替换（删除原有，使用新的）
+    # short    请求条数    2
+    # String[]    代码列表 8    SH6000018SZ000001
+    # int    字段组合类型一    组合操作符、筛选证券代码的字段
+    # int    字段组合类型二    备用
+    # int    字段组合类型三    备用(总共96个位，应该够用了）  zh1 = 1 code  zh2 =1 行情时间
+    #request10000(10000,1,3,1,1,0,['SZ300059','SH600837'])
+    def request10000(self,seq,listrange,optype,zh1,zh2,zh3,codes):
+        body = struct.pack('<I3H', seq,listrange, optype, len(codes))
+        for code in codes:
+            codeencode = struct.pack('<H8s',len(code),code)
+            # print codeencode
+            body = body +codeencode
+        bodytail = struct.pack('<3I',zh1,zh2,zh3)
+        body = body +bodytail
+        tail = '}'
+        head = struct.pack('<c3h', '{', 10000, 0, len(body))
+        data = head + body + tail
+        self.sock_.send(data)
+
     def recvhead(self):
         datarecv = self.sock_.recv(7)
         # print 'recvhead',datarecv
         if (len(datarecv) < 7):
             print 'wrong datarecv',len(datarecv)
-            return datarecv,0
+            return datarecv,0,0
         unpackdata = struct.unpack('<c3h', datarecv[:7])
         print unpackdata
-        return datarecv,unpackdata[3]
+        return datarecv,unpackdata[3],unpackdata[1]
 
     def recvbody(self,bodylen):
         datarecv = self.sock_.recv(bodylen+1)
@@ -83,6 +142,12 @@ class htclient:
             print 'wrong bodyrecv',len(datarecv)
             return datarecv
         return datarecv
+
+    def keepconn(args):
+        while args.running:
+            args.heartbeat()
+            time.sleep(15)
+            print "keepconn running"
 
     def parsebody(self,type,data):
         itemlist = []
@@ -159,8 +224,29 @@ class htclient:
                 quoteitem.printcodes()
                 itemlist.append(quoteitem)
             return itemlist, bodyhead[1]
-
+        elif type == 10000:
+            print "type == 10000"
+            return itemlist,type
+        elif type == 10001:
+            reader = buffereader(data[sizeof(pushhead):])
+            bodyhead = pushhead()
+            memmove(addressof(bodyhead),data,sizeof(pushhead))
+            # print Stuct2Str(bodyhead)
+            for i in range(0,bodyhead.curnum):
+                if bodyhead.zh1&1:
+                    # codelen = reader.readbyte(1)
+                    code = reader.readstring()
+                    print 'code =', code
+                if bodyhead.zh2&1:
+                    timecur = reader.readint()
+                    print 'timecur=',timecur
+            return itemlist,type
+        elif type == 10009:
+            print 'recv heartbeat'
+            return itemlist,10009
         return itemlist,bodyhead[0]
+
+
 
 
 

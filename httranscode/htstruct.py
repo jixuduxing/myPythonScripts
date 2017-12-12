@@ -102,6 +102,12 @@ class CamMarketReq:
             data += struct.pack('<3s',market )
         return data
 
+class struct_CamHqkzReq(Structure):
+    _pack_ =1
+    _fields_ = [
+        ('flags', c_byte),  #
+        ('item_count', c_byte),  #
+    ]
 
 class CamHqkzReq:
     fmt = '<2B'
@@ -194,6 +200,14 @@ class CamZqdmInfoHeaderReq:
     def getstr(self):
         return (CamZqdmInfoHeaderReq.fmt,self.market_code, self.hqkz_date ,self.hqkz_time)
 
+class struct_CamZqdmInfoHeaderReq(Structure):
+    _pack_ =1
+    _fields_ = [
+        ('market_code', c_char*3),  #
+        ('hqkz_date', c_int),  #
+        ('hqkz_time', c_int),  #
+    ]
+
 class SSHQ:
     fmt = '<22s4i2q44i'
     size = struct.calcsize(fmt)
@@ -248,6 +262,20 @@ class struct_SSHQ(Structure):
     _pack_ =1
     _fields_ = [
         ('code', c_char * 22),  # 股票代码
+        ('last', c_int),  #
+        ('open', c_int),  #
+        ('high', c_int),  #
+        ('low', c_int),  #
+        ('total_volume', c_longlong),  # type
+        ('total_amount', c_longlong),  #
+        ('total_trade_count', c_int),  #
+        ('position', c_int),  #
+        ('buy_price', c_int*10),  #
+        ('buy_volume', c_int*10),  #
+        ('sell_price', c_int*10),  #
+        ('sell_volume', c_int*10),  #
+        ('date', c_int),  #
+        ('time', c_int),  #
     ]
 
 class ZQDMInfo:
@@ -422,5 +450,20 @@ class Struct_ZQDMInfo(Structure):
         ('pre_position', c_int),  #
         ('pre_settle_price', c_int),  #
         ('ext_type', c_byte),  #
+    ]
+
+class SSZS(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+        ('last', c_int),  #
+        ('open', c_int),  #
+        ('high', c_int),  #
+        ('low', c_int),  #
+        ('total_volume', c_longlong),  # type
+
+        ('total_amount', c_longlong),  #
+        ('date', c_int),  #
+        ('time', c_int),  #
     ]
 
