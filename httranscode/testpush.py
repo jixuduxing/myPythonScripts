@@ -18,7 +18,8 @@ def testpush():
     # port = 13000
     # ip = '121.43.72.79'
     port = 23456
-    ip = '115.159.205.150'
+    # ip = '115.159.205.150'
+    ip = '49.4.3.222'
 
     client = htclient()
     client.connect(ip, port)

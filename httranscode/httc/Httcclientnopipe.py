@@ -9,8 +9,9 @@ import redis
 
 from httcstruct import *
 from httranscode.htstruct import *
+from httranscode.buffereader import *
 # import array
-from util.until import getCurrentFileName, InitLog
+from util.until import getCurrentFileName, InitLog,uchar_checksum
 
 pipe = redis.Redis(host='127.0.0.1', port=6379,db=2)
 # pipe = red.pipeline()

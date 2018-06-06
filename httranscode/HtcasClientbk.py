@@ -6,16 +6,20 @@ import socket
 import time
 import sys
 # array.array('','sd')
-# import redis
+haveredis = 0
+
+
 
 from htstruct import *
 # import array
 from until import getCurrentFileName, InitLog,uchar_checksum
 from buffereader import buffereader
 
-# red = redis.Redis(host='127.0.0.1', port=6379,db=2)
-# pipe = red.pipeline()
-# ps = red.pubsub()
+if haveredis:
+    import redis
+    red = redis.Redis(host='127.0.0.1', port=6379,db=2)
+    pipe = red.pipeline()
+    ps = red.pubsub()
 
 
 class htcasclient:
@@ -104,7 +108,7 @@ class htcasclient:
 
         return datarecv
 
-    def handle(self):
+    def handle(self,callback = None):
         # print "handle"
         datarecv,header, bodylen = self.recvhead()
         if bodylen <0:
@@ -117,34 +121,14 @@ class htcasclient:
             if (len(bodyrecv) < bodylen  ):
                 print 'wrong bodyrecv',len(bodyrecv),bodylen
                 return False
-        self.parsebody(header,bodyrecv)
+        self.parsebody(header,bodyrecv,callback)
         return True
-
-
-
-    def parsebody(self,header,bodyrecv):
-        self.totalpack = self.totalpack +1
-        # print  time.asctime(),self.totalpack
-        print  time.time(),self.totalpack
-        if header.cmd == CAM_LOGIN_RPLY:
-            reader = buffereader(bodyrecv)
-            print "CAM_LOGIN_RPLY:0x%x" %reader.readint()
-        elif header.cmd == CAM_MARKET_RPLY:
-            print "CAM_MARKET_RPLY:"
-        elif header.cmd == CAM_IDLE_RPLY:
-            print "CAM_IDLE_RPLY"
-        elif header.cmd == CAM_HQKZ_RQST:
-            print "CAM_HQKZ_RQST"
-            self.parseHQKZ_RQST(header,bodyrecv)
-        elif header.cmd == CAM_ZQDMINFO_RQST:
-            print "CAM_ZQDMINFO_RQST"
-            self.parseZQDMINFO_RQST(header, bodyrecv)
-        else:
-            print "unknown pack:0x%x" % header.cmd
 
     def parseZQDMINFO_RQST(self,header,bodyrecv):
         pos = 0
         camZqdmInfoReq = CamZqdmInfoReq.frombuffer(bodyrecv)
+        # yield 'test'
+        # return
         # print "CamZqdmInfoReq:",camZqdmInfoReq.getstr()
         pos += camZqdmInfoReq.size
         if camZqdmInfoReq.flags & CAM_FLAGS_MARKET_FIRST_PACKET:
@@ -167,29 +151,31 @@ class htcasclient:
                 memmove(addressof(info), structbuff, sizeof(Struct_ZQDMInfo))
                 strstruct = PrintStuct(info)
 
-                logging.debug(strstruct)
+                yield  strstruct,CAM_ZQDM_INFO
 
-                # pipe.multi()
-                # pipe.set('zqdminfo_' + info.code, strstruct)
-                # pipe.sadd('zqdmset', info.code)
-                #
-                # pipe.hset(info.code, 'code', info.code)
-                # pipe.hset(info.code, 'name', info.name)
-                # pipe.hset(info.code, 'pinyin_name', info.pinyin_name)
-                # pipe.hset(info.code, 'type', info.type)
-                # pipe.hset(info.code, 'volume_unit', info.volume_unit)
-                # pipe.hset(info.code, 'pre_close', info.pre_close)
-                # pipe.hset(info.code, 'high_limit', info.high_limit)
-                # pipe.hset(info.code, 'low_limit', info.low_limit)
-                # pipe.hset(info.code, 'price_digit', info.price_digit)
-                # pipe.hset(info.code, 'price_divide', info.price_divide)
-                # pipe.hset(info.code, 'intrest', info.intrest)
-                # pipe.hset(info.code, 'crd_flag', info.crd_flag)
-                # pipe.hset(info.code, 'pre_position', info.pre_position)
-                # pipe.hset(info.code, 'pre_settle_price', info.pre_settle_price)
-                # pipe.hset(info.code, 'ext_type', info.ext_type)
-                #
-                # pipe.execute()
+                if haveredis:
+                    pipe.multi()
+                    pipe.set('zqdminfo_' + info.code, strstruct)
+                    pipe.sadd('zqdmset', info.code)
+
+                    pipe.hset(info.code, 'code', info.code)
+                    pipe.hset(info.code, 'name', info.name)
+                    pipe.hset(info.code, 'pinyin_name', info.pinyin_name)
+                    pipe.hset(info.code, 'type', info.type)
+                    pipe.hset(info.code, 'volume_unit', info.volume_unit)
+                    pipe.hset(info.code, 'pre_close', info.pre_close)
+                    pipe.hset(info.code, 'high_limit', info.high_limit)
+                    pipe.hset(info.code, 'low_limit', info.low_limit)
+                    pipe.hset(info.code, 'price_digit', info.price_digit)
+                    pipe.hset(info.code, 'price_divide', info.price_divide)
+                    pipe.hset(info.code, 'intrest', info.intrest)
+                    pipe.hset(info.code, 'crd_flag', info.crd_flag)
+                    pipe.hset(info.code, 'pre_position', info.pre_position)
+                    pipe.hset(info.code, 'pre_settle_price', info.pre_settle_price)
+                    pipe.hset(info.code, 'ext_type', info.ext_type)
+
+                    pipe.execute()
+
             elif kztype == CAM_MB_INFO:
                 # print "GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET"
 
@@ -202,7 +188,7 @@ class htcasclient:
                 # mbinfo = MBInfo.frombuffer(structbuff)
                 # print mbinfo.getstr()
             else:
-                # print "kztype 2:", kztype, i, structsize
+                yield structsize, kztype
                 structbuff = buffer.readbytes(structsize)
 
     def parseHQKZ_RQST(self,header,bodyrecv):
@@ -237,25 +223,26 @@ class htcasclient:
                 # info = SSHQ.frombuffer(structbuff)
                 # print prn_obj(info)
                 # logging.debug(prn_obj(info))
-                # pipe.multi()
-                # code = str(info.code).strip('\x00')
-                # pipe.hset(code, 'last', info.last)
-                # pipe.hset(code, 'open', info.open)
-                # pipe.hset(code, 'high', info.high)
-                # pipe.hset(code, 'low', info.low)
-                # pipe.hset(code, 'total_volume', info.total_volume)
-                # pipe.hset(code, 'total_amount', info.total_amount)
-                # pipe.hset(code, 'date', info.date)
-                # pipe.hset(code, 'time', info.time)
-                # pipe.execute()
+                if haveredis:
+                    pipe.multi()
+                    code = str(info.code).strip('\x00')
+                    pipe.hset(code, 'last', info.last)
+                    pipe.hset(code, 'open', info.open)
+                    pipe.hset(code, 'high', info.high)
+                    pipe.hset(code, 'low', info.low)
+                    pipe.hset(code, 'total_volume', info.total_volume)
+                    pipe.hset(code, 'total_amount', info.total_amount)
+                    pipe.hset(code, 'date', info.date)
+                    pipe.hset(code, 'time', info.time)
+                    pipe.execute()
                 # if info.code[0:3] == 'BI9':
                 #     # print info.code
                 #     logging.debug(PrintStuct(info))
                 if info.code[0:8] == 'SH600837':
                     # print info.code
-                    logging.debug(PrintStuct(info))
+                    yield (PrintStuct(info),1)
                 if info.code[0:8] == 'SZ300059':
-                    logging.debug(PrintStuct(info) )
+                    yield (PrintStuct(info),CAM_HQKZ_SSZS)
                 # elif sshq.code[0:3] == 'SZ0':
                 #     logging.debug(prn_obj(sshq))
                 # elif sshq.code[0:3] == 'SZ3':
@@ -268,38 +255,39 @@ class htcasclient:
                 if info.code[0:8] == 'SH000001':
                     strstruct = PrintStuct(info) +str(time.time())
                     # print strstruct
-                    logging.debug(strstruct)
+                    yield (strstruct,CAM_HQKZ_SSZS)
                 if info.code[0:3] == 'BI9':
                     strstruct = PrintStuct(info) +str(time.time())
-                    logging.debug(strstruct)
+                    yield (strstruct,CAM_HQKZ_SSZS)
 
             elif kztype == CAM_HQKZ_BLOCKHQ:
                 info = BLOCKHQ()
                 structbuff = buffer.readbytes(structsize)
                 memmove(addressof(info), structbuff, sizeof(BLOCKHQ))
                 strstruct= PrintStuct(info)
-                logging.debug(strstruct)
-                # pipe.multi()
-                # pipe.set('hq_' + info.code, strstruct)
-                # pipe.hset(info.code, 'last', info.last)
-                # pipe.hset(info.code, 'open', info.open)
-                # pipe.hset(info.code, 'high', info.high)
-                # pipe.hset(info.code, 'low', info.low)
-                # pipe.hset(info.code, 'total_volume', info.total_volume)
-                # pipe.hset(info.code, 'total_amount', info.total_amount)
-                # pipe.hset(info.code, 'pchTopStockCode', info.pchTopStockCode)
-                # pipe.hset(info.code, 'StockNum', info.StockNum)
-                # pipe.hset(info.code, 'UpNum', info.UpNum)
-                # pipe.hset(info.code, 'DownNum', info.DownNum)
-                # pipe.hset(info.code, 'StrongNum', info.StrongNum)
-                # pipe.hset(info.code, 'WeakNum', info.WeakNum)
-                # pipe.hset(info.code, 'ZGB', info.ZGB)
-                # pipe.hset(info.code, 'LTG', info.LTG)
-                # pipe.hset(info.code, 'LTSZ', info.LTSZ)
-                # pipe.hset(info.code, 'ZSZ', info.ZSZ)
-                # pipe.hset(info.code, 'date', info.date)
-                # pipe.hset(info.code, 'time', info.time)
-                # pipe.execute()
+                # logging.debug(strstruct)
+                if haveredis:
+                    pipe.multi()
+                    pipe.set('hq_' + info.code, strstruct)
+                    pipe.hset(info.code, 'last', info.last)
+                    pipe.hset(info.code, 'open', info.open)
+                    pipe.hset(info.code, 'high', info.high)
+                    pipe.hset(info.code, 'low', info.low)
+                    pipe.hset(info.code, 'total_volume', info.total_volume)
+                    pipe.hset(info.code, 'total_amount', info.total_amount)
+                    pipe.hset(info.code, 'pchTopStockCode', info.pchTopStockCode)
+                    pipe.hset(info.code, 'StockNum', info.StockNum)
+                    pipe.hset(info.code, 'UpNum', info.UpNum)
+                    pipe.hset(info.code, 'DownNum', info.DownNum)
+                    pipe.hset(info.code, 'StrongNum', info.StrongNum)
+                    pipe.hset(info.code, 'WeakNum', info.WeakNum)
+                    pipe.hset(info.code, 'ZGB', info.ZGB)
+                    pipe.hset(info.code, 'LTG', info.LTG)
+                    pipe.hset(info.code, 'LTSZ', info.LTSZ)
+                    pipe.hset(info.code, 'ZSZ', info.ZSZ)
+                    pipe.hset(info.code, 'date', info.date)
+                    pipe.hset(info.code, 'time', info.time)
+                    pipe.execute()
                 # print sshq.getstr()
             # elif kztype == CAM_HQKZ_SSZS:
             # elif kztype == CAM_HQKZ_ORDER_QUEUE:
@@ -318,9 +306,21 @@ class htcasclient:
                 structbuff = buffer.readbytes(structsize)
 
                 memmove(addressof(info), structbuff, sizeof(struct_xgsg))
+
                 # logging.debug(PrintStuct(info))
+            elif kztype == CAM_HQKZ_FunFlow:
+                info = FunFlow()
+                structbuff = buffer.readbytes(structsize)
+
+                memmove(addressof(info), structbuff, sizeof(FunFlow))
+                if info.code[:8] == 'SZ300431':
+                    yield info,CAM_HQKZ_FunFlow
+                    # yield (PrintStuct(info),CAM_HQKZ_FunFlow)
+            elif kztype == CAM_HQKZ_SSHQEXT:
+                buffer.readbytes(structsize)
+                pass
             else:
-                # print "kztype:",kztype
+                print "kztype:",kztype
                 structbuff = buffer.readbytes(structsize)
 
     def keepconn(args):
@@ -329,10 +329,42 @@ class htcasclient:
             time.sleep(5)
             print "keepconn running"
 
-    def work(self):
+    def parsebody(self,header,bodyrecv,callback = None):
+        self.totalpack = self.totalpack +1
+        # print  time.asctime(),self.totalpack
+        # print  time.time(),self.totalpack
+        if header.cmd == CAM_LOGIN_RPLY:
+            reader = buffereader(bodyrecv)
+            print "CAM_LOGIN_RPLY:0x%x" %reader.readint()
+        elif header.cmd == CAM_MARKET_RPLY:
+            print "CAM_MARKET_RPLY:"
+        elif header.cmd == CAM_IDLE_RPLY:
+            print "CAM_IDLE_RPLY"
+        elif header.cmd == CAM_HQKZ_RQST:
+            # print "CAM_HQKZ_RQST"
+            for (str,type) in self.parseHQKZ_RQST(header,bodyrecv):
+                if callback:
+                    callback(str,type)
+                else:
+                    print str,type
+
+
+        elif header.cmd == CAM_ZQDMINFO_RQST:
+            # print "CAM_ZQDMINFO_RQST"
+            for str in self.parseZQDMINFO_RQST(header, bodyrecv):
+                if callback:
+                    callback(str,0)
+                else:
+                    print str
+                # print str
+                pass
+        else:
+            print "unknown pack:0x%x" % header.cmd
+
+    def work(self,callback = None):
         ncycle = 0;
         while 1:
-            if self.handle() :
+            if self.handle(callback) :
                 ncycle += 1
                 continue;
             else:
@@ -369,15 +401,20 @@ client = htcasclient()
 # client.connect('115.159.95.177',13130)
 # client.connect('115.159.204.185',8020)
 # client.connect('182.254.155.190',8020)
+port = 8030
 port = 8020
-# port = 13140
-# ip = '115.159.95.177'
-ip = '172.190.28.217'
+port = 13130
+ip = '188.190.12.88'
+# ip = '172.190.28.217'
+# ip='10.10.13.26'
+# ip='127.0.0.1'
+
 if len(sys.argv) >2:
     ip = sys.argv[1]
     port = int(sys.argv[2])
 
-filename = 'htcasclientbk' +str(os.getpid())
+filename = 'htcasclientbk'
+# +str(os.getpid())
 InitLog(curpath,filename)
 
 client.connect( ip,port )
@@ -387,8 +424,18 @@ client.login()
 # client.reqmarkets(['SZ'])
 # client.reqmarkets(['HT'])
 # client.reqmarkets(['SH','SZ'])
-client.reqmarkets(['SH',])
+client.reqmarkets(['SH'])
 # client.reqmarkets(['BI'])
 # client.reqmarkets(['BK'])
 # client.reqmarkets(['MB'])
-client.work()
+def mycallback(str,type):
+    if type == CAM_HQKZ_SSHQ:
+        if str.code == 'SH600837':
+            print str
+        # print str,type
+        pass
+    else:
+        pass
+        # print str
+
+client.work(mycallback)

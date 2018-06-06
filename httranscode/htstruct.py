@@ -45,6 +45,7 @@ CAM_HQKZ_SSQDHQ	=13 #千档行情
 CAM_HQKZ_SSHQEXT =	14 #拓展动态行情
 CAM_HQKZ_XGSG =	15	#申购信息
 CAM_HQKZ_BLOCKHQ = 16	#板块行情
+CAM_HQKZ_FunFlow = 18 #资金流
 
 print "CaMsgHeader(boot_code,checksum,length,cmd,seq_id,compress)"
 
@@ -467,3 +468,28 @@ class SSZS(Structure):
         ('time', c_int),  #
     ]
 
+class FunFlow(Structure):
+    _pack_ =1
+    _fields_ = [
+        ('code', c_char * 22),  # 股票代码
+        ('trade_cnt_buy', c_int*4),  #
+        ('trade_cnt_sell', c_int*4),  #
+        ('volume_buy1', c_longlong),  #
+        ('volume_buy2', c_longlong),  #
+        ('volume_buy3', c_longlong),  #
+        ('volume_buy4', c_longlong),  #
+        ('volume_sell1', c_longlong),  #
+        ('volume_sell2', c_longlong),  #
+        ('volume_sell3', c_longlong),  #
+        ('volume_sell4', c_longlong),  #
+        ('amount_buy1', c_longlong),  #
+        ('amount_buy2', c_longlong),  #
+        ('amount_buy3', c_longlong),  #
+        ('amount_buy4', c_longlong),  #
+        ('amount_sell1', c_longlong),  #
+        ('amount_sell2', c_longlong),  #
+        ('amount_sell3', c_longlong),  #
+        ('amount_sell4', c_longlong),  #
+        ('date', c_int),  #
+        ('time', c_int),  #
+    ]

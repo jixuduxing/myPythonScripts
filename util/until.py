@@ -48,7 +48,7 @@ def InitLog(curpath,curfilename):
     # print curpath, curfilename
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-                        datefmt='%a, %d %b %Y %H:%M:%S',
+                        # datefmt='%a, %d %b %Y %H:%M:%S.%f',
                         filename=curpath + '/../log/' + curfilename + '.txt',
                         filemode='w')
     # print curpath + '/../log/' + curfilename + '.txt'

@@ -47,7 +47,7 @@ def Getlist2984( rankingway = 0):
     client.reqest2984(rankingway = rankingway,reqnum= 50)
     index = 0
 
-    datarecv,datalen = client.recvhead()
+    datarecv,datalen,c = client.recvhead()
     totallist = []
     if datalen:
         bodyrecv = client.recvbody(datalen)
@@ -63,7 +63,7 @@ def Getlist2984( rankingway = 0):
         totallist = totallist + itemlist
         while index <totalsize:
             client.reqest2984(reqbegin = index,rankingway = rankingway,reqnum= 50)
-            datarecv, datalen = client.recvhead()
+            datarecv, datalen,c = client.recvhead()
             if not datalen:
                 print "recv head error"
                 break
@@ -126,14 +126,14 @@ def Getlist2331(market, rankingway=0):
         print 'totallist:', len(totallist), ',totalsize:', totalsize
 
 
-# testlist = Getlist2984(1)
-testlist = Getlist(105,0)
+testlist = Getlist2984(1)
+# testlist = Getlist(105,0)
 
-import io
-wfile = io.open(__file__+'.log','wb')
-wfile.write( 'key,pre_close,last,open,high,low,total_volume,total_amount\n')
+# import io
+# wfile = io.open(__file__+'.log','wb')
+# wfile.write( 'key,pre_close,last,open,high,low,total_volume,total_amount\n')
 
-for item in testlist:
-    teststr = item.code_ + ',' +  str(item.preclose_)+ ',' +  str(item.new_) + ',' + str(item.open_) + ',' + str(item.high_) + ',' + str(item.low_)+ ',' +str(item.volumn_)+ ',' +str(item.amount_)
-    wfile.write(teststr)
-    wfile.write('\n')
+# for item in testlist:
+#     teststr = item.code_ + ',' +  str(item.preclose_)+ ',' +  str(item.new_) + ',' + str(item.open_) + ',' + str(item.high_) + ',' + str(item.low_)+ ',' +str(item.volumn_)+ ',' +str(item.amount_)
+#     wfile.write(teststr)
+#     wfile.write('\n')
