@@ -26,7 +26,7 @@ class fastdecoder:
         bfind, curmessage = self.thiscurtemplate.getmessage(self.curmsgid)
         if bfind == False:
             print "data can not parse,unknown msgid", self.curmsgid
-            return
+            return False
         # if len(curmessage.Fields) > len(self.mapbits):
         #     raise "pmap not match"
         #     return
@@ -36,7 +36,7 @@ class fastdecoder:
             if field.needplace():
                 if field.type == itemtype.type_else:
                     print "decoderdata fail for field:1", 'test', field.id, field.seq
-                    return
+                    return False
                 if not streamdecoder.ispresent(self.seq, self.pmap):
                     print 'no', self.seq, field.id
                     self.seq += 1
@@ -55,13 +55,14 @@ class fastdecoder:
             elif field.op in (optype.op_no, optype.op_delta):  # 不占位  数据存在
                 if field.type == itemtype.type_else:
                     print "decoderdata fail for field2:", field.id, field.seq
-                    return
+                    return  False
                 dataret, flag = self.read(field,decod, field.option)
                 if field.option:
                     if not flag:  # means null
                         print "data is null", field.id
                         continue
                 print "data2: ", field.id,'=', dataret
+        return True
         pass
 
     def decoderdata(self,data):
@@ -76,7 +77,8 @@ class fastdecoder:
                 self.curmsgid = msgid
             else:
                 print "no msgid"
-            self.decodermsg(decod)
+            if not self.decodermsg(decod):
+                return
 
     def read(self,field,decod,isoption):
         if field.type ==itemtype.type_int32:
@@ -120,20 +122,20 @@ class fastdecoder:
         if len(fieldseq.items ) == 0:
             return fieldseq.name +" wrong",0
         sequencelen = 0
-        if fieldseq.needplace():#占位
+        if fieldseq.seqlen_item.needplace():#占位
             if not streamdecoder.ispresent(self.seq, self.pmap): #不存在
-                if fieldseq.op == optype.op_copy:
-                    sequencelen = fieldseq.items[0].prevalue
+                if fieldseq.seqlen_item.op == optype.op_copy:
+                    sequencelen = fieldseq.seqlen_item.prevalue
                 else:
                     raise "error readsequence  no length!!!!"
             else:
-                sequencelen, flag = self.read(fieldseq.items[0],decod, fieldseq.option)
+                sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
                 self.seq += 1
         else:
-            sequencelen, flag = self.read(fieldseq.items[0],decod, fieldseq.option)
+            sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
         sequncedecod = sequencedecoder()
 
-        fieldseq.items[0].prevalue = sequencelen
+        fieldseq.seqlen_item.prevalue = sequencelen
         # sequencelen,i = self.readint()
         print "enter sequence", fieldseq.name,sequencelen
         return sequncedecod.decode(decod,sequencelen,fieldseq)
@@ -183,20 +185,20 @@ class sequencedecoder:
         if len(fieldseq.items ) == 0:
             return fieldseq.name +" wrong",0
         sequencelen = 0
-        if fieldseq.needplace():#占位
+        if fieldseq.seqlen_item.needplace():#占位
             if not streamdecoder.ispresent(self.seq, self.pmap): #不存在
-                if fieldseq.op == optype.op_copy:
-                    sequencelen = fieldseq.items[0].prevalue
+                if fieldseq.seqlen_item.op == optype.op_copy:
+                    sequencelen = fieldseq.seqlen_item.prevalue
                 else:
                     raise "error readsequence  no length!!!!"
             else:
-                sequencelen, flag = self.read(fieldseq.items[0],decod, fieldseq.option)
+                sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
                 self.seq += 1
         else:
-            sequencelen, flag = self.read(fieldseq.items[0],decod, fieldseq.option)
+            sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
         sequncedecod = sequencedecoder()
 
-        fieldseq.items[0].prevalue = sequencelen
+        fieldseq.seqlen_item.prevalue = sequencelen
         # sequencelen,i = self.readint()
         print "enter sequence", fieldseq.name,sequencelen
         return sequncedecod.decode(decod,sequencelen,fieldseq)
