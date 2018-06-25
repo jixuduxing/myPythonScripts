@@ -130,7 +130,8 @@ class fastdecoder:
                     raise "error readsequence  no length!!!!"
             else:
                 sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
-                self.seq += 1
+            self.seq += 1
+            # print "readsequence seq = ",self.seq
         else:
             sequencelen, flag = self.read(fieldseq.seqlen_item,decod, fieldseq.seqlen_item.option)
         sequncedecod = sequencedecoder()
